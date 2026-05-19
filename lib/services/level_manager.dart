@@ -11,10 +11,13 @@ import 'puzzle_generator.dart';
 class LevelManager {
   Map<Difficulty, int> maxUnlocked = {
     Difficulty.beginner: 1,
-    Difficulty.intermediate: 1,
+    Difficulty.easy: 1,
+    Difficulty.medium: 1,
+    Difficulty.hard: 1,
     Difficulty.expert: 1,
   };
   int currentLevelId = 1;
+  final PuzzleGenerator _generator = PuzzleGenerator();
 
   Future<void> init() async {
     await loadSaveData();
@@ -22,23 +25,19 @@ class LevelManager {
 
   Future<void> loadSaveData() async {
     final prefs = await SharedPreferences.getInstance();
-    maxUnlocked[Difficulty.beginner] =
-        prefs.getInt('maxUnlocked_beginner') ?? 1;
-    maxUnlocked[Difficulty.intermediate] =
-        prefs.getInt('maxUnlocked_intermediate') ?? 1;
+    maxUnlocked[Difficulty.beginner] = prefs.getInt('maxUnlocked_beginner') ?? 1;
+    maxUnlocked[Difficulty.easy] = prefs.getInt('maxUnlocked_easy') ?? 1;
+    maxUnlocked[Difficulty.medium] = prefs.getInt('maxUnlocked_medium') ?? 1;
+    maxUnlocked[Difficulty.hard] = prefs.getInt('maxUnlocked_hard') ?? 1;
     maxUnlocked[Difficulty.expert] = prefs.getInt('maxUnlocked_expert') ?? 1;
   }
 
   Future<void> saveData() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(
-      'maxUnlocked_beginner',
-      maxUnlocked[Difficulty.beginner]!,
-    );
-    await prefs.setInt(
-      'maxUnlocked_intermediate',
-      maxUnlocked[Difficulty.intermediate]!,
-    );
+    await prefs.setInt('maxUnlocked_beginner', maxUnlocked[Difficulty.beginner]!);
+    await prefs.setInt('maxUnlocked_easy', maxUnlocked[Difficulty.easy]!);
+    await prefs.setInt('maxUnlocked_medium', maxUnlocked[Difficulty.medium]!);
+    await prefs.setInt('maxUnlocked_hard', maxUnlocked[Difficulty.hard]!);
     await prefs.setInt('maxUnlocked_expert', maxUnlocked[Difficulty.expert]!);
   }
 
@@ -57,25 +56,11 @@ class LevelManager {
   }
 
   Future<int> getMaxLevels(Difficulty diff) async {
-    String folder = _getDiffString(diff);
-    int count = 0;
-    while (true) {
-      try {
-        await rootBundle.loadString(
-          'assets/levels/$folder/level_${count + 1}.level',
-        );
-        count++;
-      } catch (e) {
-        break;
-      }
-    }
-    return count > 0 ? count : 1;
+    return 9999; // Endless levels via procedural generation
   }
 
   String _getDiffString(Difficulty diff) {
-    if (diff == Difficulty.intermediate) return 'intermediate';
-    if (diff == Difficulty.expert) return 'expert';
-    return 'beginner';
+    return diff.name;
   }
 
   Future<PuzzleData> loadLevel(Difficulty diff, int levelId) async {
@@ -88,9 +73,9 @@ class LevelManager {
       currentLevelId = levelId;
       return data;
     } catch (e) {
-      // Fallback to generator
+      // Fallback to procedural generator for endless play
       currentLevelId = levelId;
-      return PuzzleGenerator.generate(diff);
+      return await _generator.generate(diff);
     }
   }
 

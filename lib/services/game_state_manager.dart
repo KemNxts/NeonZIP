@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../models/board.dart';
 import '../models/difficulty.dart';
 import '../models/grid_pos.dart';
@@ -22,6 +23,7 @@ class GameStateManager extends ChangeNotifier {
 
   bool isDrawing = false;
   bool isAnimatingExtension = false;
+  bool isCompleting = false;
   GridPos? lastValidPos;
 
   GameStateManager(this.levelManager);
@@ -44,6 +46,7 @@ class GameStateManager extends ChangeNotifier {
 
     playerPath = PlayerPath(color: const Color.fromRGBO(200, 255, 255, 1.0));
     isDrawing = false;
+    isCompleting = false;
     state = GameState.playing;
     movesCounter = 0;
     notifyListeners();
@@ -109,6 +112,7 @@ class GameStateManager extends ChangeNotifier {
 
     playerPath.addPoint(pos);
     lastValidPos = pos;
+    HapticFeedback.selectionClick();
     notifyListeners();
 
     if (t.type == TileType.node && t.sequenceNum == board!.totalNodes) {
@@ -172,15 +176,24 @@ class GameStateManager extends ChangeNotifier {
     return true;
   }
 
-  void endPath() {
+  Future<void> endPath() async {
     isDrawing = false;
-    if (board == null) return;
+    if (board == null || isCompleting) return;
 
     if (isPathFullyValid()) {
+      isCompleting = true;
+      HapticFeedback.heavyImpact();
+      notifyListeners(); // Render the completed path
+      
+      await Future.delayed(const Duration(milliseconds: 500)); // Cinematic pause
+      
       state = GameState.levelComplete;
+      isCompleting = false;
       levelManager.unlockNextLevel(currentDifficulty);
+      notifyListeners();
+    } else {
+      notifyListeners();
     }
-    notifyListeners();
   }
 
   bool applyHint() {
@@ -221,7 +234,7 @@ class GameStateManager extends ChangeNotifier {
   }
 
   void handleInput(GridPos gPos) {
-    if (board == null || state != GameState.playing || isAnimatingExtension) return;
+    if (board == null || state != GameState.playing || isAnimatingExtension || isCompleting) return;
 
     if (board!.isValidPos(gPos)) {
       if (playerPath.points.isEmpty) {
@@ -237,6 +250,7 @@ class GameStateManager extends ChangeNotifier {
           playerPath.backtrackTo(gPos);
           isDrawing = true;
           lastValidPos = gPos;
+          HapticFeedback.mediumImpact();
           notifyListeners();
         }
       }
@@ -244,7 +258,7 @@ class GameStateManager extends ChangeNotifier {
   }
 
   void handleDragUpdate(GridPos gPos) {
-    if (board == null || state != GameState.playing || !isDrawing || isAnimatingExtension) return;
+    if (board == null || state != GameState.playing || !isDrawing || isAnimatingExtension || isCompleting) return;
 
     if (board!.isValidPos(gPos) && gPos != lastValidPos) {
       if (lastValidPos != null && board!.isAdjacent(lastValidPos!, gPos)) {
@@ -254,7 +268,7 @@ class GameStateManager extends ChangeNotifier {
   }
 
   void handleDragEnd() {
-    if (state == GameState.playing && isDrawing && !isAnimatingExtension) {
+    if (state == GameState.playing && isDrawing && !isAnimatingExtension && !isCompleting) {
       endPath();
     }
   }
@@ -264,7 +278,7 @@ class GameStateManager extends ChangeNotifier {
   ///
   /// Returns true if the extension was applied, false if invalid.
   Future<bool> tapExtendPath(GridPos target) async {
-    if (board == null || state != GameState.playing || isAnimatingExtension) return false;
+    if (board == null || state != GameState.playing || isAnimatingExtension || isCompleting) return false;
     if (playerPath.points.isEmpty) return false;
 
     final current = playerPath.points.last;
@@ -297,8 +311,14 @@ class GameStateManager extends ChangeNotifier {
     final toCommit = <GridPos>[];
     int expectedNext = _expectedNextNode();
     bool hitEndNode = false;
+    GridPos previous = current;
 
     for (final pos in cells) {
+      // 0. Stop if blocked by an inner wall
+      if (board!.hasWall(previous, pos)) {
+        break;
+      }
+
       // 1. Stop if blocked (already visited)
       if (playerPath.contains(pos)) {
         break;
@@ -323,6 +343,7 @@ class GameStateManager extends ChangeNotifier {
         // Empty cell — safe to add and continue
         toCommit.add(pos);
       }
+      previous = pos;
     }
 
     if (toCommit.isEmpty) return false;
@@ -334,8 +355,9 @@ class GameStateManager extends ChangeNotifier {
       if (state != GameState.playing) break; // In case game was reset
       playerPath.addPoint(pos);
       lastValidPos = pos;
+      HapticFeedback.lightImpact();
       notifyListeners();
-      await Future.delayed(const Duration(milliseconds: 30));
+      await Future.delayed(const Duration(milliseconds: 8));
     }
 
     isAnimatingExtension = false;

@@ -6,8 +6,10 @@ import '../models/app_theme.dart';
 import '../models/board.dart';
 import '../models/grid_pos.dart';
 import '../services/game_state_manager.dart';
+import '../models/tile.dart';
 import 'path_painter.dart';
 import 'tile_widget.dart';
+import 'wall_painter.dart';
 
 class GameBoardWidget extends StatefulWidget {
   const GameBoardWidget({Key? key}) : super(key: key);
@@ -23,10 +25,6 @@ class _GameBoardWidgetState extends State<GameBoardWidget> {
 
   /// Raw offset of the user's finger, clamped to orthogonal movements from the last cell.
   Offset? _dragOffset;
-
-  /// Cached layout values so onTapUp can resolve a grid position.
-  double _cellSize = 0;
-  int _gridSize = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -47,10 +45,6 @@ class _GameBoardWidgetState extends State<GameBoardWidget> {
                 : constraints.maxHeight;
             final double boardSize = minDimension * 0.95;
             final double cellSize = boardSize / size;
-
-            // Cache layout values for use in onTapUp (outside LayoutBuilder).
-            _cellSize = cellSize;
-            _gridSize = size;
 
             return Center(
               child: Container(
@@ -125,10 +119,23 @@ class _GameBoardWidgetState extends State<GameBoardWidget> {
                             child: SizedBox(
                               width: boardSize,
                               height: boardSize,
-                              child: GestureDetector(
-                                // Pan down fires immediately — used to start/re-engage
-                                // an existing path or tap on node 1.
-                                onPanDown: (details) {
+                              child: Listener(
+                                onPointerUp: (event) {
+                                  setState(() {
+                                    _isDragging = false;
+                                    _dragOffset = null;
+                                  });
+                                  final GridPos pos = _getGridPos(
+                                    event.localPosition,
+                                    cellSize,
+                                    size,
+                                  );
+                                  state.tapExtendPath(pos);
+                                },
+                                child: GestureDetector(
+                                  // Pan down fires immediately — used to start/re-engage
+                                  // an existing path or tap on node 1.
+                                  onPanDown: (details) {
                                   final GridPos pos = _getGridPos(
                                     details.localPosition,
                                     cellSize,
@@ -153,38 +160,30 @@ class _GameBoardWidgetState extends State<GameBoardWidget> {
                                       // Horizontal drag
                                       final isRight = diff.dx > 0;
                                       final nextX = isRight ? lastPos.x + 1 : lastPos.x - 1;
-                                      final isNextValid = nextX >= 0 && nextX < size;
+                                      final nextPos = GridPos(nextX, lastPos.y);
+                                      final isNextValid = _isValidNextStep(state, nextPos, size);
                                       
                                       double dragVal = diff.dx;
                                       if (!isNextValid) {
-                                        // Dragging against the board edge!
-                                        final maxAllowed = cellSize * 0.5;
-                                        // Soft magnetic resistance near edge
-                                        final double norm = dragVal.abs() / maxAllowed;
-                                        final double t = norm > 20.0 ? 1.0 : (math.exp(2 * norm) - 1) / (math.exp(2 * norm) + 1);
-                                        final double res = maxAllowed * t;
-                                        dragVal = isRight ? res : -res;
+                                        // Treat invalid next cells as blocked (no visual stretch/overlap)
+                                        dragVal = 0.0;
                                       } else {
-                                        dragVal = dragVal.clamp(-cellSize, cellSize);
+                                        dragVal = dragVal.clamp(-cellSize * 0.30, cellSize * 0.30);
                                       }
                                       clampedDiff = Offset(dragVal, 0);
                                     } else {
                                       // Vertical drag
                                       final isDown = diff.dy > 0;
                                       final nextY = isDown ? lastPos.y + 1 : lastPos.y - 1;
-                                      final isNextValid = nextY >= 0 && nextY < size;
+                                      final nextPos = GridPos(lastPos.x, nextY);
+                                      final isNextValid = _isValidNextStep(state, nextPos, size);
                                       
                                       double dragVal = diff.dy;
                                       if (!isNextValid) {
-                                        // Dragging against the board edge!
-                                        final maxAllowed = cellSize * 0.5;
-                                        // Soft magnetic resistance near edge
-                                        final double norm = dragVal.abs() / maxAllowed;
-                                        final double t = norm > 20.0 ? 1.0 : (math.exp(2 * norm) - 1) / (math.exp(2 * norm) + 1);
-                                        final double res = maxAllowed * t;
-                                        dragVal = isDown ? res : -res;
+                                        // Treat invalid next cells as blocked (no visual stretch/overlap)
+                                        dragVal = 0.0;
                                       } else {
-                                        dragVal = dragVal.clamp(-cellSize, cellSize);
+                                        dragVal = dragVal.clamp(-cellSize * 0.30, cellSize * 0.30);
                                       }
                                       clampedDiff = Offset(0, dragVal);
                                     }
@@ -209,19 +208,6 @@ class _GameBoardWidgetState extends State<GameBoardWidget> {
                                   });
                                   state.handleDragEnd();
                                 },
-                                // Tap up fires only for clean taps (no drag recognised).
-                                onTapUp: (details) {
-                                  setState(() {
-                                    _isDragging = false;
-                                    _dragOffset = null;
-                                  });
-                                  final GridPos pos = _getGridPos(
-                                    details.localPosition,
-                                    _cellSize,
-                                    _gridSize,
-                                  );
-                                  state.tapExtendPath(pos);
-                                },
                                 child: GridView.builder(
                                   physics: const NeverScrollableScrollPhysics(),
                                   gridDelegate:
@@ -244,6 +230,25 @@ class _GameBoardWidgetState extends State<GameBoardWidget> {
                                     );
                                   },
                                 ),
+                                ),
+                              ),
+                            ),
+                          ),
+
+
+                          // 5. Walls Layer
+                          IgnorePointer(
+                            child: SizedBox(
+                              width: boardSize,
+                              height: boardSize,
+                              child: CustomPaint(
+                                painter: WallPainter(
+                                  board: board,
+                                  cellSize: cellSize,
+                                  wallColor: theme.isDark 
+                                      ? Colors.white.withValues(alpha: 0.15)
+                                      : theme.textPrimary.withValues(alpha: 0.15),
+                                ),
                               ),
                             ),
                           ),
@@ -263,6 +268,31 @@ class _GameBoardWidgetState extends State<GameBoardWidget> {
         );
       },
     );
+  }
+
+  bool _isValidNextStep(GameStateManager state, GridPos nextPos, int size) {
+    if (state.board == null) return false;
+    if (nextPos.x < 0 || nextPos.x >= size || nextPos.y < 0 || nextPos.y >= size) return false;
+    if (state.playerPath.contains(nextPos)) return false;
+
+    if (state.playerPath.points.isNotEmpty) {
+      if (state.board!.hasWall(state.playerPath.points.last, nextPos)) return false;
+    }
+
+    final tile = state.board!.getTile(nextPos);
+    if (tile.type == TileType.node) {
+      int expectedNext = 2;
+      for (var p in state.playerPath.points) {
+        var t = state.board!.getTile(p);
+        if (t.type == TileType.node) {
+          expectedNext = t.sequenceNum + 1;
+        }
+      }
+      if (tile.sequenceNum != expectedNext) {
+        return false;
+      }
+    }
+    return true;
   }
 
   GridPos _getGridPos(Offset localPosition, double cellSize, int size) {

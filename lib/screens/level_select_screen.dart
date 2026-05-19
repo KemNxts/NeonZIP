@@ -176,44 +176,33 @@ class _LevelSelectScreenState extends State<LevelSelectScreen> {
 
   Widget _buildDifficultyTabs() {
     final theme = context.zipTheme;
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 24),
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: theme.surface,
-        borderRadius: BorderRadius.circular(30),
-        boxShadow: [
-          BoxShadow(
-            color: theme.shadow,
-            blurRadius: 14,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: _buildTabItem(
-              Difficulty.beginner,
-              'Beginner',
-              theme.success,
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      physics: const BouncingScrollPhysics(),
+      child: Container(
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(
+          color: theme.surface,
+          borderRadius: BorderRadius.circular(30),
+          boxShadow: [
+            BoxShadow(
+              color: theme.shadow,
+              blurRadius: 14,
+              offset: const Offset(0, 5),
             ),
-          ),
-          Expanded(
-            child: _buildTabItem(
-              Difficulty.intermediate,
-              'Medium',
-              theme.warning,
-            ),
-          ),
-          Expanded(
-            child: _buildTabItem(
-              Difficulty.expert,
-              'Hard',
-              theme.accent.withOpacity(0.18),
-            ),
-          ),
-        ],
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildTabItem(Difficulty.beginner, 'Beginner', theme.success),
+            _buildTabItem(Difficulty.easy, 'Easy', theme.accentAlt),
+            _buildTabItem(Difficulty.medium, 'Medium', theme.warning),
+            _buildTabItem(Difficulty.hard, 'Hard', theme.danger),
+            _buildTabItem(Difficulty.expert, 'Expert', theme.accent),
+          ],
+        ),
       ),
     );
   }
@@ -235,7 +224,7 @@ class _LevelSelectScreenState extends State<LevelSelectScreen> {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 260),
         curve: Curves.easeOutBack,
-        padding: const EdgeInsets.symmetric(vertical: 12),
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
         decoration: BoxDecoration(
           color: bgColor,
           borderRadius: BorderRadius.circular(26),

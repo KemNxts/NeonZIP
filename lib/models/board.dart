@@ -7,8 +7,29 @@ class Board {
   int totalNodes;
   late List<List<Tile>> grid;
 
+  // Stores walls between adjacent cells. Key format: "minX,minY-maxX,maxY"
+  final Set<String> walls = {};
+
   Board(this.size) : totalNodes = 0 {
     grid = List.generate(size, (_) => List.generate(size, (_) => Tile()));
+  }
+
+  String _wallKey(GridPos a, GridPos b) {
+    if (a.x < b.x || (a.x == b.x && a.y < b.y)) {
+      return '${a.x},${a.y}-${b.x},${b.y}';
+    } else {
+      return '${b.x},${b.y}-${a.x},${a.y}';
+    }
+  }
+
+  void addWall(GridPos a, GridPos b) {
+    if (isValidPos(a) && isValidPos(b)) {
+      walls.add(_wallKey(a, b));
+    }
+  }
+
+  bool hasWall(GridPos a, GridPos b) {
+    return walls.contains(_wallKey(a, b));
   }
 
   Tile getTile(GridPos pos) {
@@ -20,9 +41,12 @@ class Board {
     return pos.x >= 0 && pos.x < size && pos.y >= 0 && pos.y < size;
   }
 
+  /// Checks if two cells are geometrically adjacent AND not separated by a wall.
   bool isAdjacent(GridPos a, GridPos b) {
-    return (a.x == b.x && (a.y - b.y).abs() == 1) ||
+    bool geomAdj = (a.x == b.x && (a.y - b.y).abs() == 1) ||
         (a.y == b.y && (a.x - b.x).abs() == 1);
+    if (!geomAdj) return false;
+    return !hasWall(a, b);
   }
 
   List<GridPos> getAdjacent(GridPos pos) {

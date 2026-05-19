@@ -48,7 +48,10 @@ class PathPainter extends CustomPainter {
     if (drawPath) {
 
     // ── Primary path ────────────────────────────────────────────────────────
-    final path = _buildPath(points);
+    final List<Offset> completedPoints = [
+      for (final p in pts) gridToPixel(p, cellSize),
+    ];
+    final path = _buildPath(completedPoints);
 
     final Paint paint = Paint()
       ..strokeWidth = cellSize * 0.40
@@ -80,19 +83,37 @@ class PathPainter extends CustomPainter {
         ..style = PaintingStyle.stroke,
     );
 
+    // ── Active Drag Preview Guide ───────────────────────────────────────────
+    if (dragOffset != null && completedPoints.isNotEmpty) {
+      final guidePath = Path();
+      guidePath.moveTo(completedPoints.last.dx, completedPoints.last.dy);
+      guidePath.lineTo(dragOffset!.dx, dragOffset!.dy);
+
+      // A thinner, translucent guide line to show drag intent
+      canvas.drawPath(
+        guidePath,
+        Paint()
+          ..color = pathEnd.withValues(alpha: 0.6)
+          ..strokeWidth = cellSize * 0.15
+          ..strokeCap = StrokeCap.round
+          ..style = PaintingStyle.stroke,
+      );
+    }
+
     }
 
     // ── Glowing tip dot ──────────────────────────────────────────────────────
     if (drawTip && points.isNotEmpty) {
       final tip = points.last;
-      final dotR = cellSize * 0.22;
+      // Match the line cap more closely (strokeWidth is 0.4, so cap radius is 0.2)
+      final dotR = cellSize * 0.18;
 
-      // Outer soft glow.
+      // Outer soft glow. Reduced spread.
       canvas.drawCircle(
         tip,
-        dotR * 1.55,
+        dotR * 1.35,
         Paint()
-          ..color = pathEnd.withValues(alpha: 0.28)
+          ..color = pathEnd.withValues(alpha: 0.25)
           ..style = PaintingStyle.fill,
       );
 
@@ -102,8 +123,8 @@ class PathPainter extends CustomPainter {
       // White core.
       canvas.drawCircle(
         tip,
-        dotR * 0.42,
-        Paint()..color = Colors.white.withValues(alpha: 0.80),
+        dotR * 0.45,
+        Paint()..color = Colors.white.withValues(alpha: 0.85),
       );
     }
   }

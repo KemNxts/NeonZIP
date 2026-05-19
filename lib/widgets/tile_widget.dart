@@ -21,9 +21,36 @@ class TileWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     final bool isNode = tile.type == TileType.node;
     final theme = context.zipTheme;
-    final nodeTextColor = theme.node.computeLuminance() > 0.55
-        ? theme.textPrimary
+
+    // Adaptive text color for nodes based on background brightness
+    final nodeTextColor = theme.node.computeLuminance() > 0.50
+        ? (theme.isDark ? theme.boardBackground : theme.textPrimary)
         : Colors.white;
+
+    // Theme-aware dynamic contrast styles for path tiles & empty cells
+    final Color cellColor;
+    final Border cellBorder;
+    if (isPathActive) {
+      cellColor = theme.pathStart.withValues(alpha: 0.15);
+      cellBorder = Border.all(
+        color: theme.pathStart.withValues(alpha: 0.35),
+        width: 1.5,
+      );
+    } else {
+      if (theme.isBoardDark) {
+        cellColor = theme.surfaceAlt.withValues(alpha: 0.35);
+        cellBorder = Border.all(
+          color: Colors.white.withValues(alpha: 0.08),
+          width: 1.0,
+        );
+      } else {
+        cellColor = theme.surface.withValues(alpha: 0.70);
+        cellBorder = Border.all(
+          color: theme.textPrimary.withValues(alpha: 0.08),
+          width: 1.0,
+        );
+      }
+    }
 
     Widget content = SizedBox(
       width: size,
@@ -38,10 +65,9 @@ class TileWidget extends StatelessWidget {
             width: size * 0.95,
             height: size * 0.95,
             decoration: BoxDecoration(
-              color: isPathActive
-                  ? theme.pathStart.withValues(alpha: 0.08)
-                  : theme.surface.withValues(alpha: 0.10),
+              color: cellColor,
               borderRadius: BorderRadius.circular(size * 0.15),
+              border: cellBorder,
             ),
           ),
 

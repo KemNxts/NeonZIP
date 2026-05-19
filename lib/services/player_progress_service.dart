@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/app_theme.dart';
 import '../models/challenge.dart';
 import '../models/store_item.dart';
+import '../models/game_config.dart';
 
 class PlayerProgressService extends ChangeNotifier {
   static const Set<String> _defaultOwnedItems = {
@@ -15,8 +16,8 @@ class PlayerProgressService extends ChangeNotifier {
     'victory_confetti',
   };
 
-  int coins = 1250;
-  int gems = 15;
+  int coins = GameConfig.startingCoins;
+  int gems = GameConfig.startingGems;
 
   int totalLevelsCompleted = 0;
   int totalStarsEarned = 0;
@@ -24,7 +25,9 @@ class PlayerProgressService extends ChangeNotifier {
   int longestStreak = 12;
   int totalPlayTimeSeconds = 0;
   int hintsUsed = 0;
-  int hintsRemaining = 3;
+  int hintsRemaining = GameConfig.startingHints;
+
+  bool dailyChestClaimed = false;
 
   String playerName = 'Player 1';
   int playerLevel = 5;
@@ -223,6 +226,7 @@ class PlayerProgressService extends ChangeNotifier {
     if (refreshDaily || dailyChallenges.isEmpty) {
       _generateDailyChallenges();
       lastDailyChallengeRefresh = now;
+      dailyChestClaimed = false;
       changed = true;
     }
 
@@ -425,6 +429,24 @@ class PlayerProgressService extends ChangeNotifier {
     return const [];
   }
 
+  List<ChallengeReward>? claimDailyChest() {
+    if (dailyChestClaimed) return null;
+    final allDone = dailyChallenges.isNotEmpty &&
+        dailyChallenges.every((c) => c.isClaimed);
+    if (!allDone) return null;
+
+    dailyChestClaimed = true;
+    coins += GameConfig.dailyChestCoins;
+    gems += GameConfig.dailyChestGems;
+    _saveData();
+    notifyListeners();
+
+    return [
+      const ChallengeReward(type: RewardType.coins, amount: GameConfig.dailyChestCoins),
+      const ChallengeReward(type: RewardType.gems, amount: GameConfig.dailyChestGems),
+    ];
+  }
+
   List<ChallengeReward>? _claimFromList(
     List<Challenge> challenges,
     String challengeId,
@@ -468,15 +490,16 @@ class PlayerProgressService extends ChangeNotifier {
 
   Future<void> _loadData() async {
     final prefs = await SharedPreferences.getInstance();
-    coins = prefs.getInt('pp_coins') ?? 1250;
-    gems = prefs.getInt('pp_gems') ?? 15;
+    coins = prefs.getInt('pp_coins') ?? GameConfig.startingCoins;
+    gems = prefs.getInt('pp_gems') ?? GameConfig.startingGems;
     totalLevelsCompleted = prefs.getInt('pp_levels') ?? 0;
     totalStarsEarned = prefs.getInt('pp_stars') ?? 0;
     currentStreak = prefs.getInt('pp_streak') ?? 7;
     longestStreak = prefs.getInt('pp_longest_streak') ?? 12;
     totalPlayTimeSeconds = prefs.getInt('pp_playtime') ?? 0;
-    hintsRemaining = prefs.getInt('pp_hints') ?? 3;
+    hintsRemaining = prefs.getInt('pp_hints') ?? GameConfig.startingHints;
     hintsUsed = prefs.getInt('pp_hints_used') ?? 0;
+    dailyChestClaimed = prefs.getBool('pp_daily_chest') ?? false;
     playerName = prefs.getString('pp_name') ?? 'Player 1';
     playerLevel = prefs.getInt('pp_level') ?? 5;
     xp = prefs.getInt('pp_xp') ?? 340;
@@ -561,6 +584,7 @@ class PlayerProgressService extends ChangeNotifier {
     await prefs.setInt('pp_playtime', totalPlayTimeSeconds);
     await prefs.setInt('pp_hints', hintsRemaining);
     await prefs.setInt('pp_hints_used', hintsUsed);
+    await prefs.setBool('pp_daily_chest', dailyChestClaimed);
     await prefs.setString('pp_name', playerName);
     await prefs.setInt('pp_level', playerLevel);
     await prefs.setInt('pp_xp', xp);

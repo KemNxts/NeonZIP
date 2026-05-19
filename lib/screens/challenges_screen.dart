@@ -645,6 +645,7 @@ class _RewardChestCard extends StatelessWidget {
     final allDone =
         progress.dailyChallenges.isNotEmpty &&
         progress.dailyChallenges.every((c) => c.isClaimed);
+    final claimed = progress.dailyChestClaimed;
     final completedCount = progress.completedDailyChallenges;
     final total = progress.dailyChallenges.length;
 
@@ -652,7 +653,7 @@ class _RewardChestCard extends StatelessWidget {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: allDone
+          colors: allDone && !claimed
               ? [theme.warning, theme.accentAlt]
               : [theme.surfaceAlt, theme.surface],
           begin: Alignment.topLeft,
@@ -661,7 +662,7 @@ class _RewardChestCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: allDone ? theme.warning.withOpacity(0.3) : theme.shadow,
+            color: allDone && !claimed ? theme.warning.withOpacity(0.3) : theme.shadow,
             blurRadius: 16,
             offset: const Offset(0, 8),
           ),
@@ -669,7 +670,7 @@ class _RewardChestCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Text(allDone ? '🎁' : '📦', style: const TextStyle(fontSize: 44))
+          Text(claimed ? '✨' : (allDone ? '🎁' : '📦'), style: const TextStyle(fontSize: 44))
               .animate(onPlay: (c) => c.repeat(reverse: true))
               .rotate(
                 begin: -0.05,
@@ -683,19 +684,21 @@ class _RewardChestCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  allDone ? 'Reward Chest!' : 'Daily Chest',
+                  claimed ? 'Chest Opened' : (allDone ? 'Reward Chest!' : 'Daily Chest'),
                   style: TextStyle(
-                    color: allDone ? Colors.white : theme.textPrimary,
+                    color: (allDone && !claimed) ? Colors.white : theme.textPrimary,
                     fontSize: 18,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
                 Text(
-                  allDone
-                      ? 'All challenges done! Claim your reward.'
-                      : 'Complete all $total challenges to unlock.',
+                  claimed 
+                      ? 'Come back tomorrow for more!'
+                      : (allDone
+                          ? 'All challenges done! Claim your reward.'
+                          : 'Complete all $total challenges to unlock.'),
                   style: TextStyle(
-                    color: allDone ? Colors.white70 : theme.textSecondary,
+                    color: (allDone && !claimed) ? Colors.white70 : theme.textSecondary,
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
                   ),
@@ -715,9 +718,38 @@ class _RewardChestCard extends StatelessWidget {
               ],
             ),
           ),
-          if (allDone)
+          if (allDone && !claimed)
             BouncingButton(
-              onPressed: () {},
+              onPressed: () {
+                final rewards = progress.claimDailyChest();
+                if (rewards != null && rewards.isNotEmpty) {
+                  final rewardText = rewards
+                      .map((reward) {
+                        switch (reward.type) {
+                          case RewardType.coins:
+                            return '+${reward.amount} coins';
+                          case RewardType.gems:
+                            return '+${reward.amount} gems';
+                          case RewardType.streakProgress:
+                            return '+${reward.amount} streak';
+                        }
+                      })
+                      .join('  ');
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Chest Opened! $rewardText',
+                        style: const TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                      backgroundColor: theme.success,
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                }
+              },
               child: Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 16,

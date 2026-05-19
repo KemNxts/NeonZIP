@@ -187,6 +187,9 @@ class ZipThemeColors extends ThemeExtension<ZipThemeColors> {
     required this.scrim,
   });
 
+  bool get isDark => background.computeLuminance() < 0.45;
+  bool get isBoardDark => boardBackground.computeLuminance() < 0.40;
+
   @override
   ZipThemeColors copyWith({
     String? id,
