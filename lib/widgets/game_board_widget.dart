@@ -47,7 +47,10 @@ class _GameBoardWidgetState extends State<GameBoardWidget> {
             final double cellSize = boardSize / size;
 
             return Center(
-              child: Container(
+              child: ValueListenableBuilder<int>(
+                valueListenable: state.invalidMoveTrigger,
+                builder: (context, errorTrigger, _) {
+                  Widget boardWidget = Container(
                     padding: const EdgeInsets.all(16.0),
                     decoration: BoxDecoration(
                       color: theme.surface,
@@ -80,15 +83,17 @@ class _GameBoardWidgetState extends State<GameBoardWidget> {
                             child: SizedBox(
                               width: boardSize,
                               height: boardSize,
-                              child: CustomPaint(
-                                painter: PathPainter(
-                                  playerPath: state.playerPath,
-                                  cellSize: cellSize,
-                                  pathStart: theme.pathStart,
-                                  pathEnd: theme.pathEnd,
-                                  dragOffset: _isDragging ? _dragOffset : null,
-                                  drawPath: true,
-                                  drawTip: false,
+                              child: RepaintBoundary(
+                                child: CustomPaint(
+                                  painter: PathPainter(
+                                    playerPath: state.playerPath,
+                                    cellSize: cellSize,
+                                    pathStart: theme.pathStart,
+                                    pathEnd: theme.pathEnd,
+                                    dragOffset: _isDragging ? _dragOffset : null,
+                                    drawPath: true,
+                                    drawTip: false,
+                                  ),
                                 ),
                               ),
                             ),
@@ -99,15 +104,17 @@ class _GameBoardWidgetState extends State<GameBoardWidget> {
                             width: boardSize,
                             height: boardSize,
                             child: IgnorePointer(
-                              child: CustomPaint(
-                                painter: PathPainter(
-                                  playerPath: state.playerPath,
-                                  cellSize: cellSize,
-                                  pathStart: theme.pathStart,
-                                  pathEnd: theme.pathEnd,
-                                  dragOffset: _isDragging ? _dragOffset : null,
-                                  drawPath: false,
-                                  drawTip: true,
+                              child: RepaintBoundary(
+                                child: CustomPaint(
+                                  painter: PathPainter(
+                                    playerPath: state.playerPath,
+                                    cellSize: cellSize,
+                                    pathStart: theme.pathStart,
+                                    pathEnd: theme.pathEnd,
+                                    dragOffset: _isDragging ? _dragOffset : null,
+                                    drawPath: false,
+                                    drawTip: true,
+                                  ),
                                 ),
                               ),
                             ),
@@ -255,16 +262,30 @@ class _GameBoardWidgetState extends State<GameBoardWidget> {
                         ],
                       ),
                     ),
-                  )
-                  .animate()
-                  .scale(
-                    begin: const Offset(0.9, 0.9),
-                    duration: 600.ms,
-                    curve: Curves.easeOutBack,
-                  )
-                  .fadeIn(duration: 400.ms),
+                  );
+
+                  if (errorTrigger > 0) {
+                    boardWidget = boardWidget
+                        .animate(key: ValueKey('error_$errorTrigger'))
+                        .shakeX(hz: 8, amount: 6, duration: 400.ms)
+                        .tint(color: Colors.red.withValues(alpha: 0.25), duration: 200.ms)
+                        .then()
+                        .tint(color: Colors.transparent, duration: 200.ms);
+                  }
+
+                  return boardWidget
+                    .animate()
+                    .scale(
+                      begin: const Offset(0.9, 0.9),
+                      duration: 600.ms,
+                      curve: Curves.easeOutBack,
+                    )
+                    .fadeIn(duration: 400.ms);
+                },
+              ),
             );
           },
+
         );
       },
     );

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-enum TileType { empty, node, path }
+enum TileType { empty, node, path, ice, warp }
 
 class Tile {
   TileType type;

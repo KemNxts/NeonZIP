@@ -6,7 +6,7 @@ import '../models/difficulty.dart';
 import '../models/grid_pos.dart';
 import '../models/puzzle_data.dart';
 import '../models/player_path.dart';
-import 'puzzle_generator.dart';
+import 'level_generator.dart';
 
 class LevelManager {
   Map<Difficulty, int> maxUnlocked = {
@@ -17,7 +17,7 @@ class LevelManager {
     Difficulty.expert: 1,
   };
   int currentLevelId = 1;
-  final PuzzleGenerator _generator = PuzzleGenerator();
+  final LevelGenerator _generator = LevelGenerator();
 
   Future<void> init() async {
     await loadSaveData();
@@ -56,7 +56,7 @@ class LevelManager {
   }
 
   Future<int> getMaxLevels(Difficulty diff) async {
-    return 9999; // Endless levels via procedural generation
+    return 100; // Scaled to exactly 100 levels per difficulty using the Master Designer procedural generator
   }
 
   String _getDiffString(Difficulty diff) {
@@ -73,9 +73,9 @@ class LevelManager {
       currentLevelId = levelId;
       return data;
     } catch (e) {
-      // Fallback to procedural generator for endless play
+      // Fallback to procedural generator
       currentLevelId = levelId;
-      return await _generator.generate(diff);
+      return await _generator.generate(diff, levelId);
     }
   }
 

@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -10,7 +11,9 @@ import '../widgets/bouncing_button.dart';
 import '../widgets/mascot_widget.dart';
 import 'gameplay_screen.dart';
 import 'level_select_screen.dart';
+import 'store_screen.dart';
 import 'main_shell.dart';
+
 
 class MainMenuScreen extends StatefulWidget {
   const MainMenuScreen({Key? key}) : super(key: key);
@@ -347,10 +350,75 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
           ),
         ),
         const SizedBox(height: 20),
-        const Center(
-          child: MascotWidget(emotion: MascotEmotion.idle, size: 150),
+        Center(
+          child: GestureDetector(
+            onTap: () {
+              HapticFeedback.lightImpact();
+              final shellState = context.findAncestorStateOfType<MainShellState>();
+              if (shellState != null) {
+                shellState.switchTab(2); // Wardrobe/Store tab
+              } else {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const StoreScreen()));
+              }
+            },
+            child: Stack(
+              alignment: Alignment.center,
+              clipBehavior: Clip.none,
+              children: [
+                // Layered UI enhancement behind
+                Positioned(
+                  child: Container(
+                    width: 160,
+                    height: 160,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: theme.accent.withOpacity(0.4),
+                          blurRadius: 40,
+                          spreadRadius: 10,
+                        ),
+                      ],
+                    ),
+                  )
+                  .animate(onPlay: (c) => c.repeat(reverse: true))
+                  .scale(begin: const Offset(1, 1), end: const Offset(1.08, 1.08), duration: 2.seconds),
+                ),
+                const MascotWidget(emotion: MascotEmotion.idle, size: 150),
+                // Layered UI enhancement in front
+                Positioned(
+                  bottom: -15,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: theme.surface,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(color: theme.shadow, blurRadius: 10, offset: const Offset(0, 5)),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.edit, size: 14, color: theme.textSecondary),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Customize',
+                          style: TextStyle(
+                            color: theme.textPrimary,
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ],
+
     );
   }
 

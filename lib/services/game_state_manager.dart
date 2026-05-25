@@ -26,6 +26,10 @@ class GameStateManager extends ChangeNotifier {
   bool isCompleting = false;
   GridPos? lastValidPos;
 
+  // UI Event Triggers (Phase 2 Decoupling)
+  final ValueNotifier<int> invalidMoveTrigger = ValueNotifier<int>(0);
+
+
   GameStateManager(this.levelManager);
 
   Future<void> init() async {
@@ -106,9 +110,12 @@ class GameStateManager extends ChangeNotifier {
     var t = board!.getTile(pos);
     if (t.type == TileType.node) {
       if (t.sequenceNum != expectedNext) {
+        invalidMoveTrigger.value++;
+        HapticFeedback.vibrate();
         return;
       }
     }
+
 
     playerPath.addPoint(pos);
     lastValidPos = pos;
@@ -337,7 +344,10 @@ class GameStateManager extends ChangeNotifier {
           break;
         } else {
           // Stop right before the invalid node
+          invalidMoveTrigger.value++;
+          HapticFeedback.vibrate();
           break;
+
         }
       } else {
         // Empty cell — safe to add and continue

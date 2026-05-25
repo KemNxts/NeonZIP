@@ -20,6 +20,8 @@ class TileWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool isNode = tile.type == TileType.node;
+    final bool isIce = tile.type == TileType.ice;
+    final bool isWarp = tile.type == TileType.warp;
     final theme = context.zipTheme;
 
     // Adaptive text color for nodes based on background brightness
@@ -71,7 +73,51 @@ class TileWidget extends StatelessWidget {
             ),
           ),
 
+          // TODO: Hook up physics logic here for Ice and Warp cells
+
+          // ── Ice Obstacle ───────────────────────────────────────────────────
+          if (isIce)
+            Container(
+              width: size * 0.85,
+              height: size * 0.85,
+              decoration: BoxDecoration(
+                color: Colors.cyanAccent.withOpacity(0.3),
+                borderRadius: BorderRadius.circular(size * 0.1),
+                border: Border.all(color: Colors.cyanAccent, width: 2),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.cyanAccent.withOpacity(0.5),
+                    blurRadius: 12,
+                    spreadRadius: 2,
+                  ),
+                ],
+              ),
+              child: Icon(Icons.ac_unit, color: Colors.cyanAccent, size: size * 0.5),
+            ),
+
+          // ── Warp Obstacle ──────────────────────────────────────────────────
+          if (isWarp)
+            Container(
+              width: size * 0.75,
+              height: size * 0.75,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: const RadialGradient(
+                  colors: [Colors.purpleAccent, Colors.deepPurple],
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.purpleAccent.withOpacity(0.6),
+                    blurRadius: 15,
+                    spreadRadius: 4,
+                  ),
+                ],
+              ),
+              child: const Icon(Icons.all_out, color: Colors.white, size: 20),
+            ).animate(onPlay: (c) => c.repeat()).rotate(duration: 3.seconds),
+
           // ── Node ───────────────────────────────────────────────────────────
+
           if (isNode)
             Container(
                   width: size * 0.60,
@@ -105,10 +151,11 @@ class TileWidget extends StatelessWidget {
                 .animate(target: isPathActive ? 1 : 0)
                 .scale(
                   begin: const Offset(1.0, 1.0),
-                  end: const Offset(1.08, 1.08),
-                  duration: 280.ms,
+                  end: const Offset(1.15, 1.15),
+                  duration: 400.ms,
                   curve: Curves.elasticOut,
                 ),
+
         ],
       ),
     );
