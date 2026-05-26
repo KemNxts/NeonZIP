@@ -26,7 +26,7 @@ class PuzzleGenerator {
     if (path.isEmpty) {
       // Fallback if no path found with walls (very rare with good wall placement, but possible)
       // Retry without walls or fewer walls. For simplicity, just regenerate a simple one.
-      return generate(Difficulty.easy);
+      return generate(Difficulty.beginner);
     }
 
     // 3. Place Nodes
@@ -52,30 +52,26 @@ class PuzzleGenerator {
   int _getSize(Difficulty diff) {
     switch (diff) {
       case Difficulty.beginner: return 5;
-      case Difficulty.easy: return 6;
-      case Difficulty.medium: return 8;
-      case Difficulty.hard: return 10;
-      case Difficulty.expert: return 12;
+      case Difficulty.medium: return 7;
+      case Difficulty.hard: return 9;
     }
   }
 
   int _getNodeCount(Difficulty diff, int size) {
     switch (diff) {
       case Difficulty.beginner: return 4;
-      case Difficulty.easy: return 5;
       case Difficulty.medium: return 6;
       case Difficulty.hard: return 8;
-      case Difficulty.expert: return 10;
     }
   }
 
   bool _usesWalls(Difficulty diff) {
-    return diff == Difficulty.medium || diff == Difficulty.hard || diff == Difficulty.expert;
+    return diff == Difficulty.medium || diff == Difficulty.hard;
   }
 
   void _generateWalls(Board board, Difficulty diff) {
     // Randomly place a few walls to increase complexity without entirely blocking the board.
-    int wallCount = diff == Difficulty.expert ? 8 : (diff == Difficulty.hard ? 5 : 2);
+    int wallCount = diff == Difficulty.hard ? 5 : 2;
     
     int added = 0;
     int attempts = 0;

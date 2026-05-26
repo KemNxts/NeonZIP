@@ -6,6 +6,7 @@ import '../models/app_theme.dart';
 import '../models/difficulty.dart';
 import '../services/game_state_manager.dart';
 import '../services/player_progress_service.dart';
+import '../services/settings_service.dart';
 import '../widgets/ambient_background.dart';
 import '../widgets/bouncing_button.dart';
 import '../widgets/mascot_widget.dart';
@@ -268,9 +269,112 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
               theme.accent,
               Icons.diamond_rounded,
             ),
+            const SizedBox(width: 8),
+            IconButton(
+              icon: Icon(Icons.settings, color: theme.mutedText),
+              onPressed: () => _showSettings(context),
+            ),
           ],
         ),
       ],
+    );
+  }
+
+  void _showSettings(BuildContext context) {
+    final theme = context.zipTheme;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: theme.background,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'Settings',
+                style: TextStyle(
+                  color: theme.textPrimary,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Path Style',
+                style: TextStyle(
+                  color: theme.textSecondary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Consumer<SettingsService>(
+                builder: (context, settings, _) {
+                  return Row(
+                    children: [
+                      Expanded(
+                        child: _buildSettingOption(
+                          context: context,
+                          title: 'Classic',
+                          isSelected: settings.pathStyle == PathStyle.classic,
+                          onTap: () => settings.setPathStyle(PathStyle.classic),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildSettingOption(
+                          context: context,
+                          title: 'Terminal Dot',
+                          isSelected: settings.pathStyle == PathStyle.terminalDot,
+                          onTap: () => settings.setPathStyle(PathStyle.terminalDot),
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildSettingOption({
+    required BuildContext context,
+    required String title,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    final theme = context.zipTheme;
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          color: isSelected ? theme.surfaceAlt : theme.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isSelected ? theme.accent : Colors.transparent,
+            width: 2,
+          ),
+        ),
+        child: Center(
+          child: Text(
+            title,
+            style: TextStyle(
+              color: isSelected ? theme.accent : theme.textSecondary,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      ),
     );
   }
 

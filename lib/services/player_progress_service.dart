@@ -30,9 +30,13 @@ class PlayerProgressService extends ChangeNotifier {
   bool dailyChestClaimed = false;
 
   String playerName = 'Player 1';
+  bool hasSetPlayerName = false;
   int playerLevel = 5;
   int xp = 340;
   int xpToNextLevel = 500;
+
+  bool hasRated = false;
+  int unratedWinStreak = 0; // Tracks consecutive wins since last prompt backoff
 
   Set<String> ownedItems = {..._defaultOwnedItems};
   String activeThemeId = kDefaultThemeId;
@@ -501,6 +505,9 @@ class PlayerProgressService extends ChangeNotifier {
     hintsUsed = prefs.getInt('pp_hints_used') ?? 0;
     dailyChestClaimed = prefs.getBool('pp_daily_chest') ?? false;
     playerName = prefs.getString('pp_name') ?? 'Player 1';
+    hasSetPlayerName = prefs.containsKey('pp_name');
+    hasRated = prefs.getBool('pp_has_rated') ?? false;
+    unratedWinStreak = prefs.getInt('pp_unrated_streak') ?? 0;
     playerLevel = prefs.getInt('pp_level') ?? 5;
     xp = prefs.getInt('pp_xp') ?? 340;
     xpToNextLevel = prefs.getInt('pp_xp_next') ?? 500;
@@ -586,6 +593,8 @@ class PlayerProgressService extends ChangeNotifier {
     await prefs.setInt('pp_hints_used', hintsUsed);
     await prefs.setBool('pp_daily_chest', dailyChestClaimed);
     await prefs.setString('pp_name', playerName);
+    await prefs.setBool('pp_has_rated', hasRated);
+    await prefs.setInt('pp_unrated_streak', unratedWinStreak);
     await prefs.setInt('pp_level', playerLevel);
     await prefs.setInt('pp_xp', xp);
     await prefs.setInt('pp_xp_next', xpToNextLevel);
@@ -679,5 +688,32 @@ class PlayerProgressService extends ChangeNotifier {
     final minutes = (totalPlayTimeSeconds % 3600) ~/ 60;
     if (hours > 0) return '${hours}h ${minutes}m';
     return '${minutes}m';
+  }
+
+  void updatePlayerName(String newName) {
+    playerName = newName;
+    hasSetPlayerName = true;
+    _saveData();
+    notifyListeners();
+  }
+
+  void incrementUnratedWinStreak() {
+    if (hasRated) return;
+    unratedWinStreak++;
+    _saveData();
+    notifyListeners();
+  }
+
+  void resetUnratedWinStreak() {
+    unratedWinStreak = 0;
+    _saveData();
+    notifyListeners();
+  }
+
+  void markHasRated() {
+    hasRated = true;
+    unratedWinStreak = 0;
+    _saveData();
+    notifyListeners();
   }
 }

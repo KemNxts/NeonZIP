@@ -22,6 +22,7 @@ class GameStateManager extends ChangeNotifier {
   int movesCounter = 0;
 
   bool isDrawing = false;
+  bool isAnimatingBlast = false;
   bool isAnimatingExtension = false;
   bool isCompleting = false;
   GridPos? lastValidPos;
@@ -130,7 +131,7 @@ class GameStateManager extends ChangeNotifier {
   bool isPathFullyValid() {
     if (board == null) return false;
     final points = playerPath.points;
-    final int expectedLength = board!.size * board!.size;
+    final int expectedLength = board!.walkableCellCount;
 
     // 1. Check exact board coverage length
     if (points.length != expectedLength) return false;
@@ -194,6 +195,13 @@ class GameStateManager extends ChangeNotifier {
       
       await Future.delayed(const Duration(milliseconds: 500)); // Cinematic pause
       
+      isAnimatingBlast = true;
+      notifyListeners();
+      
+      // Wait for the blast wave to finish (e.g. 1.2s)
+      await Future.delayed(const Duration(milliseconds: 1200));
+      
+      isAnimatingBlast = false;
       state = GameState.levelComplete;
       isCompleting = false;
       levelManager.unlockNextLevel(currentDifficulty);

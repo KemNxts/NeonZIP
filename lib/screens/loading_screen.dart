@@ -5,6 +5,9 @@ import 'dart:async';
 import '../models/app_theme.dart';
 import 'main_shell.dart';
 import '../widgets/mascot_widget.dart';
+import '../services/settings_service.dart';
+import 'package:provider/provider.dart';
+import 'path_selection_screen.dart';
 
 class LoadingScreen extends StatefulWidget {
   const LoadingScreen({Key? key}) : super(key: key);
@@ -37,10 +40,14 @@ class _LoadingScreenState extends State<LoadingScreen> {
   }
 
   void _transitionToMenu() {
+    final settings = Provider.of<SettingsService>(context, listen: false);
+    final targetScreen = settings.firstRunCompleted 
+        ? const MainShell() 
+        : const PathSelectionScreen();
+
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) =>
-            const MainShell(),
+        pageBuilder: (context, animation, secondaryAnimation) => targetScreen,
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           final curved = CurvedAnimation(
             parent: animation,

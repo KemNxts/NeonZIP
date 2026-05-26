@@ -7,6 +7,7 @@ import 'screens/loading_screen.dart';
 import 'services/game_state_manager.dart';
 import 'services/level_manager.dart';
 import 'services/player_progress_service.dart';
+import 'services/settings_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -16,16 +17,19 @@ void main() async {
     DeviceOrientation.portraitDown,
   ]);
 
+  final settingsService = SettingsService();
   final levelManager = LevelManager();
   final gameStateManager = GameStateManager(levelManager);
   final playerProgress = PlayerProgressService();
 
+  await settingsService.init();
   await gameStateManager.init();
   await playerProgress.init();
 
   runApp(
     MultiProvider(
       providers: [
+        ChangeNotifierProvider.value(value: settingsService),
         ChangeNotifierProvider.value(value: gameStateManager),
         ChangeNotifierProvider.value(value: playerProgress),
       ],

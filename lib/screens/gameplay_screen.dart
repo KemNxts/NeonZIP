@@ -8,7 +8,10 @@ import '../services/player_progress_service.dart';
 import '../widgets/bouncing_button.dart';
 import '../widgets/game_board_widget.dart';
 import '../widgets/level_complete_overlay.dart';
+import '../widgets/victory_finale_overlay.dart';
+import '../widgets/rate_us_modal.dart';
 import '../widgets/mascot_widget.dart';
+import '../models/difficulty.dart';
 import 'main_shell.dart';
 
 class GameplayScreen extends StatefulWidget {
@@ -257,6 +260,31 @@ class _GameplayScreenState extends State<GameplayScreen> {
       timeTakenSeconds: _elapsedSeconds,
       difficulty: state.currentDifficulty.name,
     );
+
+    // Only count streaks if they won without hints
+    if (!_usedHintThisLevel && _earnedStarsThisLevel >= 2) {
+      progress.incrementUnratedWinStreak();
+    } else {
+      progress.resetUnratedWinStreak();
+    }
+
+    if (!progress.hasRated) {
+      final isBeginnerMilestone = state.currentDifficulty == Difficulty.beginner &&
+          (state.levelManager.currentLevelId == 10 || state.levelManager.currentLevelId == 15);
+      final isStreakMilestone = progress.unratedWinStreak >= 5;
+
+      if (isBeginnerMilestone || isStreakMilestone) {
+        Future.delayed(const Duration(seconds: 2), () {
+          if (mounted) {
+            showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (ctx) => const RateUsModal(),
+            );
+          }
+        });
+      }
+    }
   }
 
   void _goHome(GameStateManager state) {
@@ -356,7 +384,10 @@ class _GameplayScreenState extends State<GameplayScreen> {
                 ),
 
                 if (state.state == GameState.levelComplete)
-                  LevelCompleteOverlay(
+                  if (state.currentDifficulty == Difficulty.hard && state.levelManager.currentLevelId >= 100)
+                    VictoryFinaleOverlay(onBackToHome: () => _goHome(state))
+                  else
+                    LevelCompleteOverlay(
                     levelId: state.levelManager.currentLevelId,
                     starsEarned: _earnedStarsThisLevel,
                     onNextLevel: () async {

@@ -3,6 +3,8 @@ import '../models/app_theme.dart';
 import 'main_menu_screen.dart';
 import 'challenges_screen.dart';
 import 'store_screen.dart';
+import '../services/player_progress_service.dart';
+import 'package:provider/provider.dart';
 import 'profile_screen.dart';
 
 class MainShell extends StatefulWidget {
@@ -30,6 +32,115 @@ class MainShellState extends State<MainShell>
     super.initState();
     _currentIndex = widget.initialIndex;
     _pageController = PageController(initialPage: widget.initialIndex);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkFirstRunProfile();
+    });
+  }
+
+  void _checkFirstRunProfile() {
+    final progress = Provider.of<PlayerProgressService>(context, listen: false);
+    if (!progress.hasSetPlayerName) {
+      _showProfileModal(context, progress, isFirstRun: true);
+    }
+  }
+
+  void _showProfileModal(BuildContext context, PlayerProgressService progress, {required bool isFirstRun}) {
+    final theme = context.zipTheme;
+    final controller = TextEditingController(text: isFirstRun ? '' : progress.playerName);
+    
+    showDialog(
+      context: context,
+      barrierDismissible: !isFirstRun, // Force input on first run
+      builder: (context) {
+        return PopScope(
+          canPop: !isFirstRun,
+          onPopInvoked: (didPop) {
+            // No custom action needed, just blocking if isFirstRun
+          },
+          child: Dialog(
+            backgroundColor: theme.surface,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    isFirstRun ? 'Welcome to NeonZIP!' : 'Edit Profile',
+                    style: TextStyle(
+                      color: theme.textPrimary,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Enter your player name (max 12 characters).',
+                    style: TextStyle(
+                      color: theme.textSecondary,
+                      fontSize: 14,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 24),
+                  TextField(
+                    controller: controller,
+                    maxLength: 12,
+                    autofocus: true,
+                    style: TextStyle(color: theme.textPrimary),
+                    decoration: InputDecoration(
+                      hintText: 'Player 1',
+                      hintStyle: TextStyle(color: theme.textSecondary.withValues(alpha: 0.5)),
+                      filled: true,
+                      fillColor: theme.background,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                      counterText: '',
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: theme.accent,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      onPressed: () {
+                        final name = controller.text.trim();
+                        if (name.isNotEmpty) {
+                          progress.updatePlayerName(name);
+                          Navigator.of(context).pop();
+                        } else if (!isFirstRun) {
+                          Navigator.of(context).pop();
+                        } else {
+                          // Allow default Player 1 on first run if empty
+                          progress.updatePlayerName('Player 1');
+                          Navigator.of(context).pop();
+                        }
+                      },
+                      child: Text(
+                        isFirstRun ? 'Start Playing' : 'Save',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 
   @override

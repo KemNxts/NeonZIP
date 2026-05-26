@@ -3,19 +3,23 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../models/app_theme.dart';
 import '../models/tile.dart';
 
+enum TileLayer { all, background, foreground }
+
 class TileWidget extends StatelessWidget {
   final Tile tile;
   final double size;
   final int index;
   final bool isPathActive;
+  final TileLayer layer;
 
   const TileWidget({
-    Key? key,
+    super.key,
     required this.tile,
     required this.size,
     required this.index,
     this.isPathActive = false,
-  }) : super(key: key);
+    this.layer = TileLayer.all,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -54,6 +58,9 @@ class TileWidget extends StatelessWidget {
       }
     }
 
+    final drawBg = layer == TileLayer.all || layer == TileLayer.background;
+    final drawFg = layer == TileLayer.all || layer == TileLayer.foreground;
+
     Widget content = SizedBox(
       width: size,
       height: size,
@@ -61,32 +68,33 @@ class TileWidget extends StatelessWidget {
         alignment: Alignment.center,
         children: [
           // ── Background cell ────────────────────────────────────────────────
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            curve: Curves.easeOutCubic,
-            width: size * 0.95,
-            height: size * 0.95,
-            decoration: BoxDecoration(
-              color: cellColor,
-              borderRadius: BorderRadius.circular(size * 0.15),
-              border: cellBorder,
+          if (drawBg)
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              curve: Curves.easeOutCubic,
+              width: size * 0.95,
+              height: size * 0.95,
+              decoration: BoxDecoration(
+                color: cellColor,
+                borderRadius: BorderRadius.circular(size * 0.15),
+                border: cellBorder,
+              ),
             ),
-          ),
 
           // TODO: Hook up physics logic here for Ice and Warp cells
 
           // ── Ice Obstacle ───────────────────────────────────────────────────
-          if (isIce)
+          if (drawFg && isIce)
             Container(
               width: size * 0.85,
               height: size * 0.85,
               decoration: BoxDecoration(
-                color: Colors.cyanAccent.withOpacity(0.3),
+                color: Colors.cyanAccent.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(size * 0.1),
                 border: Border.all(color: Colors.cyanAccent, width: 2),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.cyanAccent.withOpacity(0.5),
+                    color: Colors.cyanAccent.withValues(alpha: 0.5),
                     blurRadius: 12,
                     spreadRadius: 2,
                   ),
@@ -96,7 +104,7 @@ class TileWidget extends StatelessWidget {
             ),
 
           // ── Warp Obstacle ──────────────────────────────────────────────────
-          if (isWarp)
+          if (drawFg && isWarp)
             Container(
               width: size * 0.75,
               height: size * 0.75,
@@ -107,7 +115,7 @@ class TileWidget extends StatelessWidget {
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.purpleAccent.withOpacity(0.6),
+                    color: Colors.purpleAccent.withValues(alpha: 0.6),
                     blurRadius: 15,
                     spreadRadius: 4,
                   ),
@@ -118,7 +126,7 @@ class TileWidget extends StatelessWidget {
 
           // ── Node ───────────────────────────────────────────────────────────
 
-          if (isNode)
+          if (drawFg && isNode)
             Container(
                   width: size * 0.60,
                   height: size * 0.60,

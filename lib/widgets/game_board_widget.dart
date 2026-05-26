@@ -6,6 +6,8 @@ import '../models/app_theme.dart';
 import '../models/board.dart';
 import '../models/grid_pos.dart';
 import '../services/game_state_manager.dart';
+import '../services/settings_service.dart';
+import 'particle_layer.dart';
 import '../models/tile.dart';
 import 'path_painter.dart';
 import 'tile_widget.dart';
@@ -18,7 +20,8 @@ class GameBoardWidget extends StatefulWidget {
   State<GameBoardWidget> createState() => _GameBoardWidgetState();
 }
 
-class _GameBoardWidgetState extends State<GameBoardWidget> {
+class _GameBoardWidgetState extends State<GameBoardWidget>
+    with SingleTickerProviderStateMixin {
   /// True while the user's finger is actively dragging (pan recognised).
   /// False during tap-based auto-extension, undo, and reset.
   bool _isDragging = false;
@@ -26,10 +29,56 @@ class _GameBoardWidgetState extends State<GameBoardWidget> {
   /// Raw offset of the user's finger, clamped to orthogonal movements from the last cell.
   Offset? _dragOffset;
 
+  final GlobalKey<ParticleLayerState> _particleLayerKey = GlobalKey<ParticleLayerState>();
+  late AnimationController _blastController;
+  bool _wasAnimatingBlast = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _blastController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1000),
+    );
+  }
+
+  @override
+  void dispose() {
+    _blastController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Consumer<GameStateManager>(
-      builder: (context, state, child) {
+    return Consumer2<GameStateManager, SettingsService>(
+      builder: (context, state, settings, child) {
+        // Trigger blast animation
+        if (state.isAnimatingBlast && !_wasAnimatingBlast) {
+          _wasAnimatingBlast = true;
+          _blastController.forward(from: 0.0);
+          
+          // Spawn confetti bursts sequentially along the path
+          if (state.playerPath.points.isNotEmpty) {
+            final points = state.playerPath.points;
+            final double cellW = (MediaQuery.of(context).size.width * 0.95) / state.board!.size;
+            for (int i = 0; i < points.length; i++) {
+              Future.delayed(Duration(milliseconds: (1000 ~/ points.length) * i), () {
+                if (mounted && _particleLayerKey.currentState != null) {
+                   final pos = points[i];
+                   final pixelPos = Offset(pos.x * cellW + cellW / 2, pos.y * cellW + cellW / 2);
+                   _particleLayerKey.currentState!.burst(
+                     pixelPos, 
+                     5, 
+                     Colors.white,
+                     speedMultiplier: 2.0
+                   );
+                }
+              });
+            }
+          }
+        } else if (!state.isAnimatingBlast && _wasAnimatingBlast) {
+          _wasAnimatingBlast = false;
+        }
         final theme = context.zipTheme;
         if (state.board == null) {
           return const Center(child: CircularProgressIndicator());
@@ -77,6 +126,38 @@ class _GameBoardWidgetState extends State<GameBoardWidget> {
                             ),
                           ),
                           
+                          // 1.5. Background Cells
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(24.0),
+                            child: SizedBox(
+                              width: boardSize,
+                              height: boardSize,
+                              child: IgnorePointer(
+                                child: GridView.builder(
+                                  physics: const NeverScrollableScrollPhysics(),
+                                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                                    crossAxisCount: size,
+                                  ),
+                                  itemCount: size * size,
+                                  itemBuilder: (context, index) {
+                                    final int x = index % size;
+                                    final int y = index ~/ size;
+                                    final pos = GridPos(x, y);
+                                    final tile = board.getTile(pos);
+                                    final bool isPathActive = state.playerPath.contains(pos);
+                                    return TileWidget(
+                                      tile: tile,
+                                      size: cellSize,
+                                      index: index,
+                                      isPathActive: isPathActive,
+                                      layer: TileLayer.background,
+                                    );
+                                  },
+                                ),
+                              ),
+                            ),
+                          ),
+                          
                           // 2. Clipped Path
                           ClipRRect(
                             borderRadius: BorderRadius.circular(24.0),
@@ -84,16 +165,23 @@ class _GameBoardWidgetState extends State<GameBoardWidget> {
                               width: boardSize,
                               height: boardSize,
                               child: RepaintBoundary(
-                                child: CustomPaint(
-                                  painter: PathPainter(
-                                    playerPath: state.playerPath,
-                                    cellSize: cellSize,
-                                    pathStart: theme.pathStart,
-                                    pathEnd: theme.pathEnd,
-                                    dragOffset: _isDragging ? _dragOffset : null,
-                                    drawPath: true,
-                                    drawTip: false,
-                                  ),
+                                child: AnimatedBuilder(
+                                  animation: _blastController,
+                                  builder: (context, _) {
+                                    return CustomPaint(
+                                      painter: PathPainter(
+                                        playerPath: state.playerPath,
+                                        cellSize: cellSize,
+                                        pathStart: theme.pathStart,
+                                        pathEnd: theme.pathEnd,
+                                        dragOffset: _isDragging ? _dragOffset : null,
+                                        drawPath: true,
+                                        drawTip: false,
+                                        style: settings.pathStyle,
+                                        blastProgress: state.isAnimatingBlast ? _blastController.value : null,
+                                      ),
+                                    );
+                                  }
                                 ),
                               ),
                             ),
@@ -114,9 +202,20 @@ class _GameBoardWidgetState extends State<GameBoardWidget> {
                                     dragOffset: _isDragging ? _dragOffset : null,
                                     drawPath: false,
                                     drawTip: true,
+                                    style: settings.pathStyle,
                                   ),
                                 ),
                               ),
+                            ),
+                          ),
+                          // 3.5 Particle System (Trails)
+                          SizedBox(
+                            width: boardSize,
+                            height: boardSize,
+                            child: ParticleLayer(
+                              key: _particleLayerKey,
+                              dragOffset: _isDragging ? _dragOffset : null,
+                              particleColor: theme.pathStart,
                             ),
                           ),
                           
@@ -234,6 +333,7 @@ class _GameBoardWidgetState extends State<GameBoardWidget> {
                                       size: cellSize,
                                       index: index,
                                       isPathActive: isPathActive,
+                                      layer: TileLayer.foreground,
                                     );
                                   },
                                 ),
@@ -267,10 +367,7 @@ class _GameBoardWidgetState extends State<GameBoardWidget> {
                   if (errorTrigger > 0) {
                     boardWidget = boardWidget
                         .animate(key: ValueKey('error_$errorTrigger'))
-                        .shakeX(hz: 8, amount: 6, duration: 400.ms)
-                        .tint(color: Colors.red.withValues(alpha: 0.25), duration: 200.ms)
-                        .then()
-                        .tint(color: Colors.transparent, duration: 200.ms);
+                        .shakeX(hz: 8, amount: 6, duration: 400.ms);
                   }
 
                   return boardWidget

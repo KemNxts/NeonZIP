@@ -123,12 +123,25 @@ class ProfileScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  progress.playerName,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 22,
-                    fontWeight: FontWeight.w900,
+                GestureDetector(
+                  onTap: () => _showEditNameModal(context, progress),
+                  child: Row(
+                    children: [
+                      Text(
+                        progress.playerName,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 22,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      const Icon(
+                        Icons.edit_rounded,
+                        color: Colors.white70,
+                        size: 18,
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -413,6 +426,92 @@ class ProfileScreen extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  void _showEditNameModal(BuildContext context, PlayerProgressService progress) {
+    final theme = context.zipTheme;
+    final controller = TextEditingController(text: progress.playerName);
+    
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          backgroundColor: theme.surface,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Edit Profile',
+                  style: TextStyle(
+                    color: theme.textPrimary,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Enter your player name (max 12 characters).',
+                  style: TextStyle(
+                    color: theme.textSecondary,
+                    fontSize: 14,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                TextField(
+                  controller: controller,
+                  maxLength: 12,
+                  autofocus: true,
+                  style: TextStyle(color: theme.textPrimary),
+                  decoration: InputDecoration(
+                    hintText: 'Player 1',
+                    hintStyle: TextStyle(color: theme.textSecondary.withValues(alpha: 0.5)),
+                    filled: true,
+                    fillColor: theme.background,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    counterText: '',
+                  ),
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: theme.accent,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    onPressed: () {
+                      final name = controller.text.trim();
+                      if (name.isNotEmpty) {
+                        progress.updatePlayerName(name);
+                      }
+                      Navigator.of(context).pop();
+                    },
+                    child: const Text(
+                      'Save',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

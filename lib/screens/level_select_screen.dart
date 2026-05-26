@@ -197,10 +197,8 @@ class _LevelSelectScreenState extends State<LevelSelectScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             _buildTabItem(Difficulty.beginner, 'Beginner', theme.success),
-            _buildTabItem(Difficulty.easy, 'Easy', theme.accentAlt),
             _buildTabItem(Difficulty.medium, 'Medium', theme.warning),
             _buildTabItem(Difficulty.hard, 'Hard', theme.danger),
-            _buildTabItem(Difficulty.expert, 'Expert', theme.accent),
           ],
         ),
       ),
@@ -210,7 +208,7 @@ class _LevelSelectScreenState extends State<LevelSelectScreen> {
   Widget _buildTabItem(Difficulty diff, String label, Color color) {
     final theme = context.zipTheme;
     bool isSelected = _currentDifficulty == diff;
-    Color activeColor = diff == Difficulty.expert ? theme.accent : Colors.white;
+    Color activeColor = diff == Difficulty.hard ? theme.danger : Colors.white;
     Color bgColor = isSelected ? color : Colors.transparent;
     Color textColor = isSelected ? activeColor : theme.mutedText;
 
@@ -354,6 +352,10 @@ class _LevelSelectScreenState extends State<LevelSelectScreen> {
 
   Widget _buildClassicModeBanner() {
     final theme = context.zipTheme;
+    String gridSizeStr = '5×5 Grid';
+    if (_currentDifficulty == Difficulty.medium) gridSizeStr = '7×7 Grid';
+    if (_currentDifficulty == Difficulty.hard) gridSizeStr = '9×9 Grid';
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 24),
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
@@ -387,11 +389,11 @@ class _LevelSelectScreenState extends State<LevelSelectScreen> {
             ),
           ),
           const SizedBox(width: 14),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                const Text(
                   'Classic Mode',
                   style: TextStyle(
                     color: Colors.white,
@@ -400,8 +402,8 @@ class _LevelSelectScreenState extends State<LevelSelectScreen> {
                   ),
                 ),
                 Text(
-                  '5×5 Grid',
-                  style: TextStyle(
+                  gridSizeStr,
+                  style: const TextStyle(
                     color: Colors.white70,
                     fontSize: 13,
                     fontWeight: FontWeight.w600,

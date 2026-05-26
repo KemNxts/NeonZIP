@@ -9,9 +9,22 @@ class Board {
 
   // Stores walls between adjacent cells. Key format: "minX,minY-maxX,maxY"
   final Set<String> walls = {};
+  
+  // Stores blocked (unwalkable) cells. Key format: "x,y"
+  final Set<String> blockedCells = {};
 
   Board(this.size) : totalNodes = 0 {
     grid = List.generate(size, (_) => List.generate(size, (_) => Tile()));
+  }
+
+  int get walkableCellCount => (size * size) - blockedCells.length;
+
+  void addBlocked(GridPos pos) {
+    blockedCells.add('${pos.x},${pos.y}');
+  }
+
+  bool isBlocked(GridPos pos) {
+    return blockedCells.contains('${pos.x},${pos.y}');
   }
 
   String _wallKey(GridPos a, GridPos b) {
@@ -33,12 +46,16 @@ class Board {
   }
 
   Tile getTile(GridPos pos) {
-    if (!isValidPos(pos)) return Tile();
-    return grid[pos.y][pos.x];
+    if (!isValidPos(pos) && !isBlocked(pos)) return Tile();
+    // Allow getting tile for blocked cells just in case, or just return empty
+    if (pos.x >= 0 && pos.x < size && pos.y >= 0 && pos.y < size) {
+      return grid[pos.y][pos.x];
+    }
+    return Tile();
   }
 
   bool isValidPos(GridPos pos) {
-    return pos.x >= 0 && pos.x < size && pos.y >= 0 && pos.y < size;
+    return pos.x >= 0 && pos.x < size && pos.y >= 0 && pos.y < size && !isBlocked(pos);
   }
 
   /// Checks if two cells are geometrically adjacent AND not separated by a wall.

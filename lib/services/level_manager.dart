@@ -6,15 +6,14 @@ import '../models/difficulty.dart';
 import '../models/grid_pos.dart';
 import '../models/puzzle_data.dart';
 import '../models/player_path.dart';
+import '../data/custom_levels.dart';
 import 'level_generator.dart';
 
 class LevelManager {
   Map<Difficulty, int> maxUnlocked = {
     Difficulty.beginner: 1,
-    Difficulty.easy: 1,
     Difficulty.medium: 1,
     Difficulty.hard: 1,
-    Difficulty.expert: 1,
   };
   int currentLevelId = 1;
   final LevelGenerator _generator = LevelGenerator();
@@ -26,19 +25,15 @@ class LevelManager {
   Future<void> loadSaveData() async {
     final prefs = await SharedPreferences.getInstance();
     maxUnlocked[Difficulty.beginner] = prefs.getInt('maxUnlocked_beginner') ?? 1;
-    maxUnlocked[Difficulty.easy] = prefs.getInt('maxUnlocked_easy') ?? 1;
     maxUnlocked[Difficulty.medium] = prefs.getInt('maxUnlocked_medium') ?? 1;
     maxUnlocked[Difficulty.hard] = prefs.getInt('maxUnlocked_hard') ?? 1;
-    maxUnlocked[Difficulty.expert] = prefs.getInt('maxUnlocked_expert') ?? 1;
   }
 
   Future<void> saveData() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt('maxUnlocked_beginner', maxUnlocked[Difficulty.beginner]!);
-    await prefs.setInt('maxUnlocked_easy', maxUnlocked[Difficulty.easy]!);
     await prefs.setInt('maxUnlocked_medium', maxUnlocked[Difficulty.medium]!);
     await prefs.setInt('maxUnlocked_hard', maxUnlocked[Difficulty.hard]!);
-    await prefs.setInt('maxUnlocked_expert', maxUnlocked[Difficulty.expert]!);
   }
 
   Future<void> unlockNextLevel(Difficulty diff) async {
@@ -64,6 +59,32 @@ class LevelManager {
   }
 
   Future<PuzzleData> loadLevel(Difficulty diff, int levelId) async {
+    // Priority 1: Check if the requested level ID exists in CustomLevels
+    Map<int, List<String>>? customMap;
+    switch (diff) {
+      case Difficulty.beginner:
+        customMap = CustomLevels.beginner;
+        break;
+      // You can add other difficulties here as CustomLevels expands:
+      // case Difficulty.easy: customMap = CustomLevels.easy; break;
+      default:
+        customMap = null;
+    }
+
+    if (customMap != null && customMap.containsKey(levelId)) {
+      try {
+        String customContent = CustomLevels.generateLevelString(customMap[levelId]!);
+        PuzzleData data = _parseLevelData(customContent);
+        currentLevelId = levelId;
+        return data;
+      } catch (e) {
+        debugPrint('\n⚠️ FALLBACK TRIGGERED: Custom Level $levelId for ${diff.name} failed to load.');
+        debugPrint('Reason: $e\n');
+        // Fallthrough to Priority 2
+      }
+    }
+
+    // Priority 2: Fall back gracefully to loading the default .level asset file
     String folder = _getDiffString(diff);
     String path = 'assets/levels/$folder/level_$levelId.level';
 
@@ -73,7 +94,7 @@ class LevelManager {
       currentLevelId = levelId;
       return data;
     } catch (e) {
-      // Fallback to procedural generator
+      // Priority 3: Fallback to procedural generator
       currentLevelId = levelId;
       return await _generator.generate(diff, levelId);
     }
@@ -101,6 +122,10 @@ class LevelManager {
         currentSection = 'NODES';
         continue;
       }
+      if (line == '[Blocked]') {
+        currentSection = 'BLOCKED';
+        continue;
+      }
       if (line == '[Solution]') {
         currentSection = 'SOLUTION';
         continue;
@@ -121,6 +146,13 @@ class LevelManager {
           int x = int.parse(parts[1]);
           int y = int.parse(parts[2]);
           board?.setNode(GridPos(x, y), seq, baseColor);
+        }
+      } else if (currentSection == 'BLOCKED') {
+        var parts = line.split(RegExp(r'\s+'));
+        if (parts.length >= 2) {
+          int x = int.parse(parts[0]);
+          int y = int.parse(parts[1]);
+          board?.addBlocked(GridPos(x, y));
         }
       } else if (currentSection == 'SOLUTION') {
         var parts = line.split(RegExp(r'\s+'));
