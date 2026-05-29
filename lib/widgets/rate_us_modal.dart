@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../models/app_theme.dart';
 import '../services/player_progress_service.dart';
 import 'bouncing_button.dart';
@@ -14,17 +15,21 @@ class RateUsModal extends StatefulWidget {
 class _RateUsModalState extends State<RateUsModal> {
   int _selectedStars = 0;
 
-  void _handleRate(BuildContext context, PlayerProgressService progress) {
+  void _handleRate(BuildContext context, PlayerProgressService progress) async {
     if (_selectedStars >= 4) {
-      // Simulate url_launcher to native store
-      // e.g. launchUrl(Uri.parse('market://details?id=YOUR_PACKAGENAME'));
+      final uri = Uri.parse('market://details?id=YOUR_PACKAGENAME');
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
       progress.markHasRated();
     } else if (_selectedStars > 0) {
       // Lower than 4 stars: just say thanks and consider it rated internally 
       // (or let them send private feedback).
       progress.markHasRated();
     }
-    Navigator.of(context).pop();
+    if (context.mounted) {
+      Navigator.of(context).pop();
+    }
   }
 
   void _handleMaybeLater(BuildContext context, PlayerProgressService progress) {

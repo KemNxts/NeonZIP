@@ -1,5 +1,6 @@
 import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/board.dart';
 import '../models/difficulty.dart';
@@ -59,22 +60,34 @@ class LevelManager {
   }
 
   Future<PuzzleData> loadLevel(Difficulty diff, int levelId) async {
+    // Phase 1: Tactical Bypass for Hard Mode to prevent deadlocks
+    if (diff == Difficulty.hard) {
+      currentLevelId = levelId;
+      return await compute(LevelGenerator.generateIsolate, {'diff': diff, 'levelId': levelId});
+    }
+
     // Priority 1: Check if the requested level ID exists in CustomLevels
     Map<int, List<String>>? customMap;
     switch (diff) {
       case Difficulty.beginner:
         customMap = CustomLevels.beginner;
         break;
-      // You can add other difficulties here as CustomLevels expands:
-      // case Difficulty.easy: customMap = CustomLevels.easy; break;
+      case Difficulty.medium:
+        customMap = CustomLevels.medium;
+        break;
+      case Difficulty.hard:
+        customMap = CustomLevels.hard;
+        break;
       default:
         customMap = null;
     }
 
     if (customMap != null && customMap.containsKey(levelId)) {
       try {
-        String customContent = CustomLevels.generateLevelString(customMap[levelId]!);
-        PuzzleData data = _parseLevelData(customContent);
+        // Phase 2: Offload heavy CustomLevels DFS verification to a background isolate with 200ms watchdog
+        String customContent = await compute(CustomLevels.generateLevelString, customMap[levelId]!)
+            .timeout(const Duration(milliseconds: 200));
+        PuzzleData data = await compute(LevelManager.parseLevelDataIsolate, customContent);
         currentLevelId = levelId;
         return data;
       } catch (e) {
@@ -90,17 +103,33 @@ class LevelManager {
 
     try {
       String fileContent = await rootBundle.loadString(path);
-      PuzzleData data = _parseLevelData(fileContent);
+      PuzzleData data = await compute(LevelManager.parseLevelDataIsolate, fileContent);
       currentLevelId = levelId;
       return data;
     } catch (e) {
-      // Priority 3: Fallback to procedural generator
+      // Priority 3: Fallback to procedural generator (Offloaded to isolate with watchdog)
       currentLevelId = levelId;
-      return await _generator.generate(diff, levelId);
+      try {
+        return await compute(LevelGenerator.generateIsolate, {'diff': diff, 'levelId': levelId})
+            .timeout(const Duration(milliseconds: 200));
+      } catch (e2) {
+        debugPrint('\n🛑 WATCHDOG TRIGGERED: Procedural Generation Timed Out! Serving Fallback Grid.\n');
+        // Ultimate Instant Fallback: Provide a valid empty 5x5 board instantly so UI never freezes
+        Board safeBoard = Board(5);
+        safeBoard.totalNodes = 2;
+        safeBoard.setNode(GridPos(0, 0), 1, Colors.blue);
+        safeBoard.setNode(GridPos(4, 4), 2, Colors.purple);
+        
+        PlayerPath safeSolution = PlayerPath();
+        for (int i = 0; i < 5; i++) safeSolution.addPoint(GridPos(0, i));
+        for (int i = 1; i < 5; i++) safeSolution.addPoint(GridPos(i, 4));
+        
+        return PuzzleData(board: safeBoard, solution: safeSolution);
+      }
     }
   }
 
-  PuzzleData _parseLevelData(String content) {
+  static PuzzleData parseLevelDataIsolate(String content) {
     int size = 5;
     int totalNodes = 5;
     Board? board;

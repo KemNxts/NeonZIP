@@ -15,10 +15,19 @@ class WallPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    // Premium Drop Shadow Layer for Depth
+    final shadowPaint = Paint()
+      ..color = Colors.black.withValues(alpha: 0.5)
+      ..strokeWidth = cellSize * 0.38
+      ..strokeCap = StrokeCap.square
+      ..style = PaintingStyle.stroke
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4.0);
+
+    // Thick Physical Blockage Layer
     final paint = Paint()
       ..color = wallColor
-      ..strokeWidth = cellSize * 0.12
-      ..strokeCap = StrokeCap.round
+      ..strokeWidth = cellSize * 0.35
+      ..strokeCap = StrokeCap.square
       ..style = PaintingStyle.stroke;
 
     for (final wallKey in board.walls) {
@@ -38,14 +47,18 @@ class WallPainter extends CustomPainter {
           if (x1 == x2) {
             // Horizontal wall (separating top and bottom)
             final borderY = (mathMax(y1, y2)) * cellSize;
-            final startX = x1 * cellSize + cellSize * 0.1;
-            final endX = (x1 + 1) * cellSize - cellSize * 0.1;
+            final startX = x1 * cellSize + cellSize * 0.05;
+            final endX = (x1 + 1) * cellSize - cellSize * 0.05;
+            // Draw shadow then physical wall
+            canvas.drawLine(Offset(startX, borderY + 2), Offset(endX, borderY + 2), shadowPaint);
             canvas.drawLine(Offset(startX, borderY), Offset(endX, borderY), paint);
           } else if (y1 == y2) {
             // Vertical wall (separating left and right)
             final borderX = (mathMax(x1, x2)) * cellSize;
-            final startY = y1 * cellSize + cellSize * 0.1;
-            final endY = (y1 + 1) * cellSize - cellSize * 0.1;
+            final startY = y1 * cellSize + cellSize * 0.05;
+            final endY = (y1 + 1) * cellSize - cellSize * 0.05;
+            // Draw shadow then physical wall
+            canvas.drawLine(Offset(borderX + 2, startY), Offset(borderX + 2, endY), shadowPaint);
             canvas.drawLine(Offset(borderX, startY), Offset(borderX, endY), paint);
           }
         }

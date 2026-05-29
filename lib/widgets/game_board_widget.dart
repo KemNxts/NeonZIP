@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:confetti/confetti.dart';
 import '../models/app_theme.dart';
 import '../models/board.dart';
 import '../models/grid_pos.dart';
@@ -31,6 +32,7 @@ class _GameBoardWidgetState extends State<GameBoardWidget>
 
   final GlobalKey<ParticleLayerState> _particleLayerKey = GlobalKey<ParticleLayerState>();
   late AnimationController _blastController;
+  late ConfettiController _confettiController;
   bool _wasAnimatingBlast = false;
 
   @override
@@ -40,11 +42,13 @@ class _GameBoardWidgetState extends State<GameBoardWidget>
       vsync: this,
       duration: const Duration(milliseconds: 1000),
     );
+    _confettiController = ConfettiController(duration: const Duration(milliseconds: 1500));
   }
 
   @override
   void dispose() {
     _blastController.dispose();
+    _confettiController.dispose();
     super.dispose();
   }
 
@@ -72,6 +76,9 @@ class _GameBoardWidgetState extends State<GameBoardWidget>
                      Colors.white,
                      speedMultiplier: 2.0
                    );
+                   if (i == points.length - 1) {
+                     _confettiController.play();
+                   }
                 }
               });
             }
@@ -353,10 +360,29 @@ class _GameBoardWidgetState extends State<GameBoardWidget>
                                   board: board,
                                   cellSize: cellSize,
                                   wallColor: theme.isDark 
-                                      ? Colors.white.withValues(alpha: 0.15)
-                                      : theme.textPrimary.withValues(alpha: 0.15),
+                                      ? const Color(0xFF101216) // Deep massive black/slate for dark mode
+                                      : const Color(0xFF2C323E), // Heavy slate for light mode
                                 ),
                               ),
+                            ),
+                          ),
+
+                          // 6. Final Confetti Layer
+                          Align(
+                            alignment: Alignment.center,
+                            child: ConfettiWidget(
+                              confettiController: _confettiController,
+                              blastDirectionality: BlastDirectionality.explosive,
+                              shouldLoop: false,
+                              colors: const [
+                                Colors.white,
+                                Colors.cyanAccent,
+                                Colors.pinkAccent,
+                                Colors.yellowAccent,
+                              ],
+                              numberOfParticles: 25,
+                              gravity: 0.25,
+                              emissionFrequency: 0.05,
                             ),
                           ),
                         ],

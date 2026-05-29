@@ -115,7 +115,10 @@ class _GameplayScreenState extends State<GameplayScreen> {
                         Align(
                           alignment: Alignment.topRight,
                           child: GestureDetector(
-                            onTap: () => Navigator.of(ctx).pop(),
+                            onTap: () {
+                              state.audioEngine.playUIClick();
+                              Navigator.of(ctx).pop();
+                            },
                             child: Container(
                               padding: const EdgeInsets.all(4),
                               decoration: BoxDecoration(
@@ -154,13 +157,14 @@ class _GameplayScreenState extends State<GameplayScreen> {
                         ),
                         const SizedBox(height: 24),
                         BouncingButton(
-                          onPressed: () {
+                          onPressed: () async {
+                            state.audioEngine.playUIClick();
                             if (progress.hintsRemaining > 0 &&
-                                state.applyHint()) {
+                                await state.applyHint()) {
                               progress.useHint();
                               _usedHintThisLevel = true;
                             }
-                            Navigator.of(ctx).pop();
+                            if (ctx.mounted) Navigator.of(ctx).pop();
                           },
                           child: Container(
                             width: double.infinity,
@@ -384,7 +388,7 @@ class _GameplayScreenState extends State<GameplayScreen> {
                 ),
 
                 if (state.state == GameState.levelComplete)
-                  if (state.currentDifficulty == Difficulty.hard && state.levelManager.currentLevelId >= 100)
+                  if (state.isGrandFinale)
                     VictoryFinaleOverlay(onBackToHome: () => _goHome(state))
                   else
                     LevelCompleteOverlay(
@@ -465,7 +469,10 @@ class _GameplayScreenState extends State<GameplayScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           BouncingButton(
-            onPressed: () => _goHome(state),
+            onPressed: () {
+              state.audioEngine.playUIClick();
+              _goHome(state);
+            },
             child: Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
@@ -589,12 +596,16 @@ class _GameplayScreenState extends State<GameplayScreen> {
           _buildActionButton(
             icon: Icons.undo_rounded,
             label: 'Undo',
-            onPressed: () => state.undoLastPoint(),
+            onPressed: () {
+              state.audioEngine.playUIClick();
+              state.undoLastPoint();
+            },
           ),
           _buildActionButton(
             icon: Icons.refresh_rounded,
             label: 'Reset',
             onPressed: () {
+              state.audioEngine.playUIClick();
               state.resetLevel();
               Provider.of<PlayerProgressService>(
                 context,
@@ -611,7 +622,10 @@ class _GameplayScreenState extends State<GameplayScreen> {
                       color: context.zipTheme.accent,
                       textColor: Colors.white,
                       badgeCount: progress.hintsRemaining,
-                      onPressed: () => _showHintDialog(context, state),
+                      onPressed: () {
+                        state.audioEngine.playUIClick();
+                        _showHintDialog(context, state);
+                      },
                     )
                     .animate(onPlay: (c) => c.repeat(reverse: true))
                     .scale(

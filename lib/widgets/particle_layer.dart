@@ -66,7 +66,7 @@ class ParticleLayerState extends State<ParticleLayer>
     for (int i = 0; i < count; i++) {
       double angle = _rnd.nextDouble() * math.pi * 2;
       double speed = _rnd.nextDouble() * 2 + 1; // 1 to 3 pixels per frame
-      double life = _rnd.nextDouble() * 0.4 + 0.3; // 0.3s to 0.7s life
+      double life = 0.4; // Strictly enforced 0.4s fade out as per specs
 
       _particles.add(Particle(
         x: pos.dx + (_rnd.nextDouble() * 10 - 5),

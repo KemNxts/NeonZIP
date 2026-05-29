@@ -37,6 +37,7 @@ class _LevelSelectScreenState extends State<LevelSelectScreen> {
   }
 
   void _goBack() {
+    Provider.of<GameStateManager>(context, listen: false).audioEngine.playUIClick();
     Navigator.of(context).pop();
   }
 
@@ -208,12 +209,14 @@ class _LevelSelectScreenState extends State<LevelSelectScreen> {
   Widget _buildTabItem(Difficulty diff, String label, Color color) {
     final theme = context.zipTheme;
     bool isSelected = _currentDifficulty == diff;
-    Color activeColor = diff == Difficulty.hard ? theme.danger : Colors.white;
+    // Phase 2: Lock the active tab text color to white for perfect legibility over the colored background pill
+    Color activeColor = Colors.white;
     Color bgColor = isSelected ? color : Colors.transparent;
     Color textColor = isSelected ? activeColor : theme.mutedText;
 
     return BouncingButton(
       onPressed: () {
+        Provider.of<GameStateManager>(context, listen: false).audioEngine.playUIClick();
         setState(() {
           _currentDifficulty = diff;
           _loadData();
@@ -302,32 +305,54 @@ class _LevelSelectScreenState extends State<LevelSelectScreen> {
 
     return BouncingButton(
       onPressed: () async {
+        Provider.of<GameStateManager>(context, listen: false).audioEngine.playUIClick();
         if (isUnlocked) {
           final state = Provider.of<GameStateManager>(context, listen: false);
-          await state.loadSpecificLevel(_currentDifficulty, levelId);
-          if (!mounted) return;
-          Navigator.of(context).push(
-            PageRouteBuilder(
-              pageBuilder: (_, __, ___) => const GameplayScreen(),
-              transitionsBuilder: (_, anim, __, child) {
-                final curved = CurvedAnimation(
-                  parent: anim,
-                  curve: Curves.easeOutCubic,
-                );
-                return FadeTransition(
-                  opacity: curved,
-                  child: SlideTransition(
-                    position: Tween<Offset>(
-                      begin: const Offset(0, 0.06),
-                      end: Offset.zero,
-                    ).animate(curved),
-                    child: child,
-                  ),
-                );
-              },
-              transitionDuration: const Duration(milliseconds: 360),
-            ),
-          );
+          
+          // Phase 2: Unconditional State Flags Reset
+          state.isCompleting = false;
+          state.isDrawing = false;
+          
+          // Phase 2: Decoupled Future resolution
+          try {
+            await state.loadSpecificLevel(_currentDifficulty, levelId);
+            if (!mounted) return;
+            
+            // Phase 2: Ensure route pushes cleanly on next frame to prevent locking
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              Navigator.of(context).push(
+                PageRouteBuilder(
+                  pageBuilder: (_, __, ___) => const GameplayScreen(),
+                  transitionsBuilder: (_, anim, __, child) {
+                    final curved = CurvedAnimation(
+                      parent: anim,
+                      curve: Curves.easeOutCubic,
+                    );
+                    return FadeTransition(
+                      opacity: curved,
+                      child: SlideTransition(
+                        position: Tween<Offset>(
+                          begin: const Offset(0, 0.06),
+                          end: Offset.zero,
+                        ).animate(curved),
+                        child: child,
+                      ),
+                    );
+                  },
+                  transitionDuration: const Duration(milliseconds: 360),
+                ),
+              );
+            });
+          } catch (e) {
+            debugPrint('\n🛑 NAVIGATION ABORTED: $e\n');
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Failed to load level. Please try again.', style: TextStyle(color: theme.textPrimary)),
+                backgroundColor: theme.danger,
+                duration: const Duration(seconds: 2),
+              )
+            );
+          }
         }
       },
       child: Container(

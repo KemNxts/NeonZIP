@@ -38,6 +38,12 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
   void initState() {
     super.initState();
     _rotateTips();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final progress = Provider.of<PlayerProgressService>(context, listen: false);
+      if (!progress.hasSetPlayerName) {
+        _showWelcomeNameModal(context, progress);
+      }
+    });
   }
 
   void _rotateTips() {
@@ -50,6 +56,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
 
   void _navigateToGame(BuildContext context) async {
     final state = Provider.of<GameStateManager>(context, listen: false);
+    state.audioEngine.playUIClick();
     await state.generateLevel(Difficulty.beginner);
     if (!mounted) return;
     Navigator.of(context).push(
@@ -77,6 +84,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
   }
 
   void _navigateToLevelSelect(BuildContext context) {
+    Provider.of<GameStateManager>(context, listen: false).audioEngine.playUIClick();
     Navigator.of(context).push(
       PageRouteBuilder(
         pageBuilder: (_, __, ___) => const LevelSelectScreen(),
@@ -102,6 +110,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
   }
 
   void _navigateToChallenges(BuildContext context) {
+    Provider.of<GameStateManager>(context, listen: false).audioEngine.playUIClick();
     // Find the shell and switch to challenges tab
     final shellState = context.findAncestorStateOfType<MainShellState>();
     if (shellState != null) {
@@ -281,6 +290,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
   }
 
   void _showSettings(BuildContext context) {
+    Provider.of<GameStateManager>(context, listen: false).audioEngine.playUIClick();
     final theme = context.zipTheme;
     showModalBottomSheet(
       context: context,
@@ -322,7 +332,10 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                           context: context,
                           title: 'Classic',
                           isSelected: settings.pathStyle == PathStyle.classic,
-                          onTap: () => settings.setPathStyle(PathStyle.classic),
+                          onTap: () {
+                            Provider.of<GameStateManager>(context, listen: false).audioEngine.playUIClick();
+                            settings.setPathStyle(PathStyle.classic);
+                          },
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -331,7 +344,10 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                           context: context,
                           title: 'Terminal Dot',
                           isSelected: settings.pathStyle == PathStyle.terminalDot,
-                          onTap: () => settings.setPathStyle(PathStyle.terminalDot),
+                          onTap: () {
+                            Provider.of<GameStateManager>(context, listen: false).audioEngine.playUIClick();
+                            settings.setPathStyle(PathStyle.terminalDot);
+                          },
                         ),
                       ),
                     ],
@@ -457,6 +473,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
         Center(
           child: GestureDetector(
             onTap: () {
+              Provider.of<GameStateManager>(context, listen: false).audioEngine.playUIClick();
               HapticFeedback.lightImpact();
               final shellState = context.findAncestorStateOfType<MainShellState>();
               if (shellState != null) {
@@ -765,6 +782,97 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  void _showWelcomeNameModal(BuildContext context, PlayerProgressService progress) {
+    final theme = context.zipTheme;
+    final controller = TextEditingController(text: '');
+    
+    showDialog(
+      context: context,
+      barrierDismissible: false, // Force them to enter a name
+      builder: (context) {
+        return WillPopScope(
+          onWillPop: () async => false, // Prevent back button dismissal
+          child: Dialog(
+            backgroundColor: theme.surface,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Welcome to NeonZIP!',
+                    style: TextStyle(
+                      color: theme.textPrimary,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Enter your player name to get started (max 12 characters).',
+                    style: TextStyle(
+                      color: theme.textSecondary,
+                      fontSize: 14,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 24),
+                  TextField(
+                    controller: controller,
+                    maxLength: 12,
+                    autofocus: true,
+                    style: TextStyle(color: theme.textPrimary),
+                    decoration: InputDecoration(
+                      hintText: 'Player 1',
+                      hintStyle: TextStyle(color: theme.textSecondary.withValues(alpha: 0.5)),
+                      filled: true,
+                      fillColor: theme.background,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                      counterText: '',
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: theme.accent,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      onPressed: () {
+                        final name = controller.text.trim();
+                        if (name.isNotEmpty) {
+                          Provider.of<GameStateManager>(context, listen: false).audioEngine.playUIClick();
+                          progress.updatePlayerName(name);
+                          Navigator.of(context).pop();
+                        }
+                      },
+                      child: const Text(
+                        'Start Playing',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 

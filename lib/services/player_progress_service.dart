@@ -304,7 +304,7 @@ class PlayerProgressService extends ChangeNotifier {
       Challenge(
         id: 'weekly_2',
         title: 'Hard Mode Hero',
-        description: 'Complete 5 expert levels',
+        description: 'Complete 5 hard levels',
         type: ChallengeType.finishHardLevel,
         frequency: ChallengeFrequency.weekly,
         targetValue: 5,
@@ -388,7 +388,7 @@ class PlayerProgressService extends ChangeNotifier {
           );
           break;
         case ChallengeType.finishHardLevel:
-          if (difficulty == 'expert') {
+          if (difficulty == 'hard') {
             newValue = (challenge.currentValue + 1).clamp(
               0,
               challenge.targetValue,
